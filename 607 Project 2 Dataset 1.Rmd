@@ -1,0 +1,115 @@
+---
+title: "607 Project 2 (Dataset1)"
+author: "Jane Song"
+date: "2025-03-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dataset 1 - School data 
+
+## Load data
+```{r}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+library(forcats)
+
+
+url <- "https://raw.githubusercontent.com/j-song-npc/607-Project-2-/refs/heads/main/NYC%20Gifted%20and%20Talented%20Grades%202018-19%20-%20Sheet5(2).csv"
+nycschools_df <- read.csv(url) 
+View(nycschools_df)
+
+```
+
+## Split columns 
+```{r}
+max_pref <- nycschools_df %>%
+  mutate(School.Preferences = replace_na(School.Preferences, "")) %>%
+  mutate(School.Preferences = str_count(School.Preferences, ",") + 1) %>%
+  summarize(max(School.Preferences)) %>%
+  pull()
+
+nycschools <- nycschools_df %>%
+  separate(School.Preferences, 
+           into=paste0("School_preferences",1:max_pref), 
+           sep = ",|/|\\.",
+           fill= "right")
+```
+
+## Clean data 
+```{r}
+
+nycschools <- nycschools %>% 
+  select(-X)
+```
+
+```{r}
+nycschools <- nycschools %>%
+  mutate(across(everything(), 
+                ~ recode(str_to_upper(.),
+                         "Y" = "Yes",
+                         "N" = "No")))
+
+
+nycschools <-nycschools %>%
+  mutate(across(everything(),
+                ~str_trim(., side="left"))) 
+
+nycschools <- nycschools %>%
+  mutate(across(starts_with("School_preferences"), 
+                ~recode(., 
+                        "NEST" = "NEST+M",
+                        "Nest" = "NEST+M",
+                        "NEST+m" = "NEST+M",
+                        "Tag" = "TAG")))
+
+
+nycschools <- nycschools %>%
+  mutate(across(everything(),
+                ~ ifelse(str_detect(tolower(.),
+                "none|no|n/a|not|N/A|stay|next|keep|:|in|at"), 
+                NA_character_, .)))
+
+nycschools <- nycschools %>%
+  mutate(across(everything(), 
+                ~ replace(., . == "", NA)))
+```
+```{r}
+nycschools <- nycschools %>%
+  mutate(across(starts_with("School_preferences"),
+                ~case_when(
+                 str_detect(., "(?i)ps\\s*\\d+") 
+                ~ str_extract(., "(?i)ps\\s*\\d+") %>% str_replace_all("\\s+", ""), TRUE ~ .)))
+```
+
+##Analysis
+Since there was no suggested analysis in the discussion, I evaluated popular school preferences 
+```{r}
+nycschools_long <- nycschools %>%
+  pivot_longer(cols = starts_with("School_preferences"), 
+               names_to = "Preference_Type", 
+               values_to = "School")
+
+nycschools_long <- nycschools_long %>% filter(!is.na(School))
+
+nycschools_long <- nycschools_long %>%
+  mutate(School = fct_lump_n(School, n=10, other_level = "Others"))
+
+plot <- ggplot(nycschools_long, 
+  aes(x = fct_infreq(School))) +
+  geom_bar() +
+  labs(title = "School Preferences", x = "School", y = "Count") +
+  theme_minimal() +
+  coord_flip()
+
+print(plot)
+```
+
+## Conclusion
+
+We can see that NEST+M was the most popular choice among this group of students, followed by Anderson. 

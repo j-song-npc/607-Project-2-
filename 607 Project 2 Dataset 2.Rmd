@@ -1,0 +1,90 @@
+---
+title: "607 Project 2 (Dataset2)"
+author: "Jane Song"
+date: "2025-03-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Data set 2 - Pokemon 
+```{r}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+library(forcats)
+
+url <- "https://raw.githubusercontent.com/j-song-npc/607-Project-2-/refs/heads/main/pokemon_competitive_analysis(1).csv"
+pokemon_df <- read.csv(url) 
+View(pokemon_df)
+```
+
+## Split columns
+```{r}
+pokemon <- pokemon_df %>%
+  mutate(
+    Smogon_VGC_Use_2022 = ifelse(Smogon_VGC_Usage_2022 == "NoUsage" | Smogon_VGC_Usage_2022 == 0, "NoUsage", NA),
+    Smogon_VGC_Usage_Rate_2022 = ifelse(Smogon_VGC_Usage_2022 != "NoUsage" &  Smogon_VGC_Usage_2022 !=0, Smogon_VGC_Usage_2022, NA),
+     Smogon_VGC_Use_2023 = ifelse(Smogon_VGC_Usage_2023 == "NoUsage" | Smogon_VGC_Usage_2023 == 0, "NoUsage", NA),
+    Smogon_VGC_Usage_Rate_2023 = ifelse(Smogon_VGC_Usage_2023 != "NoUsage" &  Smogon_VGC_Usage_2023 !=0, Smogon_VGC_Usage_2023, NA), 
+     Smogon_VGC_Use_2024 = ifelse(Smogon_VGC_Usage_2024 == "NoUsage" | Smogon_VGC_Usage_2024 == 0, "NoUsage", NA),
+    Smogon_VGC_Usage_Rate_2024 = ifelse(Smogon_VGC_Usage_2024 != "NoUsage" &  Smogon_VGC_Usage_2024 !=0, Smogon_VGC_Usage_2024, NA),
+    Worlds_VGC_Use_2022 = ifelse(Worlds_VGC_Usage_2022 == "NoUsage" | Worlds_VGC_Usage_2022 == 0, "NoUsage", NA),
+    Worlds_VGC_Usage_Rate_2022 = ifelse(Worlds_VGC_Usage_2022 != "NoUsage" &  Worlds_VGC_Usage_2022 !=0, Worlds_VGC_Usage_2022, NA),
+    Worlds_VGC_Use_2023 = ifelse(Worlds_VGC_Usage_2023 == "NoUsage" | Worlds_VGC_Usage_2023 == 0, "NoUsage", NA),
+    Worlds_VGC_Usage_Rate_2023 = ifelse(Worlds_VGC_Usage_2023 != "NoUsage" &  Worlds_VGC_Usage_2023 !=0, Worlds_VGC_Usage_2023, NA),
+    Worlds_VGC_Use_2024 = ifelse(Worlds_VGC_Usage_2024 == "NoUsage" | Worlds_VGC_Usage_2024 == 0, "NoUsage", NA),
+    Worlds_VGC_Usage_Rate_2024 = ifelse(Worlds_VGC_Usage_2024 != "NoUsage" &  Worlds_VGC_Usage_2024 !=0, Worlds_VGC_Usage_2024, NA))
+                        
+    
+  
+```
+
+## Clean table
+```{r}
+pokemon <- pokemon %>%
+  mutate(
+    Smogon_VGC_Use_2022 = ifelse(is.na(Smogon_VGC_Use_2022), "Yes", Smogon_VGC_Use_2022),
+    Smogon_VGC_Use_2023 = ifelse(is.na(Smogon_VGC_Use_2023), "Yes", Smogon_VGC_Use_2023),
+    Smogon_VGC_Use_2024 = ifelse(is.na(Smogon_VGC_Use_2024), "Yes", Smogon_VGC_Use_2024),
+    Worlds_VGC_Use_2022 = ifelse(is.na(Worlds_VGC_Use_2022), "Yes", Worlds_VGC_Use_2022),
+    Worlds_VGC_Use_2023 = ifelse(is.na(Worlds_VGC_Use_2023), "Yes", Worlds_VGC_Use_2023),
+    Worlds_VGC_Use_2024 = ifelse(is.na(Worlds_VGC_Use_2024), "Yes", Worlds_VGC_Use_2024),
+  )
+
+pokemon <- pokemon %>%
+  select(-Smogon_VGC_Usage_2022, -Smogon_VGC_Usage_2023, -Smogon_VGC_Usage_2024, -Worlds_VGC_Usage_2022, -Worlds_VGC_Usage_2023, -Worlds_VGC_Usage_2024) 
+```
+
+## Analysis 
+My analysis is aimed to see if there is a relationship between type of pokemon vs usage in game. 
+
+```{r}
+pokemon_long <- pokemon %>%
+  pivot_longer(cols=c(Smogon_VGC_Usage_Rate_2022, Smogon_VGC_Usage_Rate_2023, Smogon_VGC_Usage_Rate_2024, Worlds_VGC_Usage_Rate_2022, Worlds_VGC_Usage_Rate_2023, Worlds_VGC_Usage_Rate_2024), 
+               names_to="Tournament",
+               values_to= "usage",
+               values_drop_na = TRUE) %>%
+
+  pivot_longer(cols = c("type1", "type2"),  
+               names_to = "TypeLabel",      
+               values_to = "Type",
+               values_drop_na = TRUE) %>%
+  filter(Type != "No_type")
+
+ggplot(pokemon_long, aes(x = fct_infreq(Type), fill = Tournament)) + 
+  geom_bar(position="stack") +
+  labs(title = "Pokemon type vs usage",
+x = "Pokemon Type",
+y = "Usage in tournament") + 
+  coord_flip()
+
+```
+
+## Conclusion
+
+Water pokemon were used most frequently and ice pokemon used the least when looking across all tournaments. 

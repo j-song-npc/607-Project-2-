@@ -1,0 +1,148 @@
+---
+title: "607 Project 2 (Dataset3)"
+author: "Jane Song"
+date: "2025-03-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data set 3- Cheese data 
+
+## Load data 
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+url <- "https://raw.githubusercontent.com/j-song-npc/607-Project-2-/refs/heads/main/cheeses.csv"
+cheeses_df <- read.csv(url) 
+View(cheeses_df)
+```
+
+## Separate columns 
+``` {r}
+
+cheeses <- cheeses_df %>%
+  separate(country, into = c("country1", "country2", "country3", "country4", "country5", "country6", "country7", "country8"), sep = ",", fill = "right")
+
+
+max_milk <- cheeses %>%
+  mutate(milk = str_count(milk, ",") + 1) %>%
+  summarize(max(milk)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(milk, into=c("milk1", "milk2", "milk3", "milk4"), sep = ",", fill = "right")
+
+max_texture <-cheeses_df %>%
+  mutate(texture = str_count(texture, ",") +1 ) %>%
+  summarize(max(texture)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(texture, into=paste0("texture",1:max_texture), sep = ",", fill= "right")
+
+
+max_type <- cheeses_df %>%
+  mutate(type = replace_na(type, "")) %>%
+  mutate(type = str_count(type, ",") +1) %>%
+  summarize(max(type)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(type, into=paste0("type",1:max_type), sep= ",", fill="right")
+
+
+max_flavor <- cheeses_df %>%
+  mutate(flavor = replace_na(flavor, "")) %>%
+  mutate(flavor = str_count(flavor, ",") +1) %>%
+  summarize(max(flavor)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(flavor, into=paste0("flavor",1:max_flavor), sep= ",", fill="right")
+
+
+max_aroma <- cheeses_df %>%
+  mutate(aroma = replace_na(aroma, "")) %>%
+  mutate(num_aroma = str_count(aroma, ",") +1) %>%
+  summarize(max(num_aroma)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(aroma, into=paste0("aroma",1:max_aroma), sep= ",", fill="right")
+
+
+max_alt <-cheeses_df %>%
+  mutate(alt_spellings = replace_na(alt_spellings, "")) %>%
+  mutate(alt_spellings = str_count(alt_spellings, ",") +1 ) %>%
+  summarize(max(alt_spellings)) %>%
+  pull()
+
+cheeses <- cheeses %>%
+  separate(alt_spellings, into=paste0("alt_spellings",1:max_alt), sep = ",", fill= "right")
+
+
+```
+
+## Clean table
+```{r}
+cheeses <- cheeses %>%
+  mutate(across(where(is.character), ~ str_replace_all(., ",", ""))) %>%  
+  mutate(across(where(is.character), ~ str_trim(.))) %>% 
+  mutate(across(where(is.character), ~ na_if(., ""))) 
+
+```
+
+## Analysis
+For my analysis, I wanted to see the flavor profiles by country. Since there are too many countries, I will evaluate the top countries that have the greatest variety of flavors. 
+
+```{r}
+cheeses_long <- cheeses %>%
+  pivot_longer(cols = starts_with("flavor"),
+               names_to = "flavor_type",
+               values_to = "flavor", 
+               values_drop_na = TRUE) %>%
+  pivot_longer(cols= starts_with("Country"),
+               names_to= "Country_num",
+               values_to = "Country",
+               values_drop_na = TRUE) %>%
+
+  mutate(country_combined = case_when(
+    Country %in% c("United Kingdom", "Great Britain", "Wales", "Scotland", "England") ~ "United Kingdom", 
+    Country %in% c("Netherlands", "Holland") ~ "Netherlands",
+    TRUE ~ Country))
+
+
+
+```
+
+
+## Plot
+```{r}
+cheese_flavor <- cheeses_long %>%
+  group_by(country_combined) %>%
+  summarize(flavor_count = n_distinct(flavor), .groups = "drop") %>%
+  arrange(desc(flavor_count)) %>%  
+  top_n(10, flavor_count)
+
+ggplot(cheese_flavor, aes(x = reorder(country_combined, flavor_count), y = flavor_count, fill = country_combined)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Top 10 Countries with the Most Unique Cheese Flavors",
+       x = "Country",
+       y = "Number of Unique Flavors") +
+  coord_flip()
+
+
+```
+
+## Conclusion
+
+From the data, we can see that the cheese from the UK has the most amount of unique flavors. 
+
